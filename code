@@ -1,0 +1,167 @@
+src/index.js :
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css'; // Optional CSS for the app
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+
+
+src/App.js :
+
+import React from 'react';
+import Chat from './Chat';
+
+const App = () => {
+  return (
+    <div>
+      <h1>Real-time Chat Application</h1>
+      <Chat />
+    </div>
+  );
+};
+
+export default App;
+
+
+
+
+*// src/Chat.js
+import React, { useEffect, useState } from 'react';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, orderBy } from "firebase/firestore";
+import { getAuth, signInAnonymously } from "firebase/auth";
+import './Chat.css'; // Import the CSS file
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAKpR1jtUCT8dAngEFUZOmOnjqR_-DX7wQ",
+  authDomain: "newchatapp-6e40f.firebaseapp.com",
+  projectId: "newchatapp-6e40f",
+  storageBucket: "newchatapp-6e40f.appspot.com",
+  messagingSenderId: "460946031677",
+  appId: "1:460946031677:web:c030ec1521ead16cbc5654",
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const Chat = () => {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+
+  // Fetch messages from Firestore in real-time
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'messages'), (snapshot) => {
+      const messagesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMessages(messagesData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sign in anonymously
+  useEffect(() => {
+    signInAnonymously(auth).catch((error) => {
+      console.error("Error signing in anonymously:", error);
+    });
+  }, []);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (text.trim()) {
+      await addDoc(collection(db, 'messages'), {
+        text,
+        timestamp: serverTimestamp(),
+        uid: auth.currentUser.uid,
+      });
+      setText(''); // Clear the input field
+    }
+  };
+
+  return (
+    <div>
+      <ul>
+        {messages.map(message => (
+          <li key={message.id}>
+            <strong>{message.uid === auth.currentUser.uid ? 'You' : 'Other'}:</strong> {message.text}
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleSendMessage}>
+        <input 
+          type="text" 
+          value={text} 
+          onChange={(e) => setText(e.target.value)} 
+          placeholder="Type a message..." 
+        />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  );
+};
+
+export default Chat;
+*
+
+
+
+
+src/Chat.css:
+
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  margin: 0;
+  padding: 20px;
+}
+
+.chat-container {
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  max-width: 600px;
+  margin: auto;
+}
+
+.messages {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #fafafa;
+}
+
+input[type="text"] {
+  width: calc(100% - 90px);
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+
+button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
